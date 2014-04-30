@@ -164,8 +164,10 @@ lval* builtin_op(lval* a, char* op) {
 		if (strcmp(op, "*") == 0) { x->num *= y->num; }
 		if (strcmp(op, "/") == 0) {
 			if (y->num == 0) {
-				lval_del(x); lval_del(y);
-				x = lval_err("Division by zero!"); break;
+				lval_del(x);
+				lval_del(y);
+				x = lval_err("Division by zero!");
+				break;
 			}
 			x->num /= y->num;
 		}
@@ -194,7 +196,8 @@ lval* lval_eval_sexpr(lval* v) {
 
 	lval* f = lval_pop(v, 0);
 	if (f->type != LVAL_SYM) {
-		lval_del(f); lval_del(v);
+		lval_del(f);
+		lval_del(v);
 		return lval_err("S-expression does not start with a symbol!");
 	}
 
