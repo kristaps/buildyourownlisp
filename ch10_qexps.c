@@ -205,11 +205,15 @@ lval* builtin_op(lval* a, char* op) {
 }
 
 #define LASSERT(args, cond, err) if (!(cond)) { lval_del(args); return lval_err(err); }
+#define LASSERT_NOT_EMPTY(args, err) if (args->cell[0]->count == 0) \
+	{ lval_del(args); return lval_err(err); }
+#define LASSERT_ONE_ARG(args, err) if (args->count > 1) \
+	{ lval_del(args); return lval_err(err); }
 
 lval* builtin_head(lval* a) {
-	LASSERT(a, (a->count == 1), "Function 'head' passed too many arguments!");
+	LASSERT_NOT_EMPTY(a, "Function 'head' passed {}!");
+	LASSERT_ONE_ARG(a, "Function 'head' passed too many arguments!");
 	LASSERT(a, (a->cell[0]->type == LVAL_QEXPR), "Function 'head' passed incorrect types!");
-	LASSERT(a, (a->cell[0]->count != 0), "Function 'head' passed {}!");
 
 	lval* v = lval_take(a, 0);
 	while (v->count > 1) {
@@ -220,9 +224,9 @@ lval* builtin_head(lval* a) {
 }
 
 lval* builtin_tail(lval* a) {
-	LASSERT(a, (a->count == 1), "Function 'tail' passed too many arguments!");
+	LASSERT_NOT_EMPTY(a, "Function 'tail' passed {}!");
+	LASSERT_ONE_ARG(a, "Function 'tail' passed too many arguments!");
 	LASSERT(a, (a->cell[0]->type == LVAL_QEXPR), "Function 'tail' passed incorrect types!");
-	LASSERT(a, (a->cell[0]->count != 0), "Function 'tail' passed {}!");
 
 	lval* v = lval_take(a, 0);
 	lval_del(lval_pop(v, 0));
