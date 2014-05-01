@@ -154,6 +154,17 @@ lval* lval_pop(lval* v, int i) {
 	return x;
 }
 
+lval* lval_insert(lval* v, lval* x, int i) {
+	v->count++;
+	v->cell = realloc(v->cell, sizeof(lval*) * v->count);
+	memmove(&v->cell[i+1], &v->cell[i], sizeof(lval*) * (v->count-1-i));
+
+	v->cell[i] = x;
+
+	return v;
+}
+
+
 lval* lval_take(lval *v, int i) {
 	lval* x = lval_pop(v, i);
 	lval_del(v);
@@ -265,12 +276,25 @@ lval* builtin_eval(lval* a) {
 	return lval_eval(x);
 }
 
+lval* builtin_cons(lval* a) {
+	LASSERT(a, (a->count <= 2), "Function 'cons' passed too many arguments!");
+	LASSERT(a, (a->count >= 2), "Function 'cons' passed too few arguments!");
+	LASSERT(a, (a->cell[1]->type == LVAL_QEXPR), "Function 'eval' expects a qexpr as second argument!");
+
+	lval* x = lval_pop(a, 0);
+	a = lval_pop(a, 0);
+	lval_insert(a, x, 0);
+
+	return a;
+}
+
 lval* builtin(lval* a, char* func) {
 	if (strcmp("list", func) == 0) { return builtin_list(a); }
 	if (strcmp("head", func) == 0) { return builtin_head(a); }
 	if (strcmp("tail", func) == 0) { return builtin_tail(a); }
 	if (strcmp("join", func) == 0) { return builtin_join(a); }
 	if (strcmp("eval", func) == 0) { return builtin_eval(a); }
+	if (strcmp("cons", func) == 0) { return builtin_cons(a); }
 	if (strstr("+-/*", func)) { return builtin_op(a, func); }
 	lval_del(a);
 	return lval_err("Unknown function!");
@@ -318,13 +342,14 @@ int main(int argc, char** argv) {
 	puts("Declared parsers");
 
 	mpca_lang(MPC_LANG_DEFAULT,
-		"                                                                                           \
-			number : /-?[0-9]+/ ;                                                                   \
-			symbol : \"list\" | \"head\" | \"tail\" | \"join\" | \"eval\" | '+' | '-' | '*' | '/' ; \
-			sexpr  : '(' <expr>* ')' ;                                                              \
-			qexpr  : '{' <expr>* '}' ;                                                              \
-			expr   : <number> | <symbol> | <sexpr> | <qexpr> ;                                      \
-			lispy  : /^/ <expr>* /$/ ;                                                              \
+		"                                                                              \
+			number : /-?[0-9]+/ ;                                                      \
+			symbol : \"list\" | \"head\" | \"tail\" | \"join\" | \"eval\" | \"cons\" | \
+				'+' | '-' | '*' | '/' ;                                                \
+			sexpr  : '(' <expr>* ')' ;                                                 \
+			qexpr  : '{' <expr>* '}' ;                                                 \
+			expr   : <number> | <symbol> | <sexpr> | <qexpr> ;                         \
+			lispy  : /^/ <expr>* /$/ ;                                                 \
 		",
 		Number, Symbol, Sexpr, Qexpr, Expr, Lispy);
 
