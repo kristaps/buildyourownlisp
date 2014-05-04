@@ -375,6 +375,14 @@ void lenv_put(lenv* e, lval* k, lval* v) {
 	e->vals[e->count-1] = lval_copy(v);
 }
 
+/* Print all symbols and values in the environment */
+void lenv_print(lenv* e) {
+	for (int i=0; i<e->count; i++) {
+		printf("%s = ", e->syms[i]);
+		lval_println(e->vals[i]);
+	}
+}
+
 /* Add builtin function to environment */
 void lenv_add_builtin(lenv* e, char* name, lbuiltin func) {
 	lval* k = lval_sym(name);
@@ -584,6 +592,17 @@ lval* builtin_init(lenv* e, lval* a) {
 	return lval_take(a, 0);
 }
 
+/* Print contents of the environment */
+lval* builtin_dump(lenv* e, lval* a) {
+	/* We allow any number of parameters, because there is now way
+	to call a function without parameters right now, todo */
+	lval_del(a);
+
+	lenv_print(e);
+
+	return lval_sexpr();
+}
+
 /* Evaluate S-Expression */
 lval* lval_eval_sexpr(lenv* e, lval* v) {
 	/* Evaluate all cells */
@@ -632,6 +651,7 @@ lval* lval_eval(lenv* e, lval* v) {
 /* Add builtin functions to an environment */
 void lenv_add_builtins(lenv* e) {
 	lenv_add_builtin(e, "def", builtin_def);
+	lenv_add_builtin(e, "dump", builtin_dump);
 
 	/* List functions */
 	lenv_add_builtin(e, "list", builtin_list);
