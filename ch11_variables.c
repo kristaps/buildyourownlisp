@@ -603,6 +603,17 @@ lval* builtin_dump(lenv* e, lval* a) {
 	return lval_sexpr();
 }
 
+/* Set run_interpreter variable to 0, signalling that the program should exit */
+lval* builtin_exit(lenv* e, lval* a) {
+	/* We allow any number of parameters, because there is now way
+	to call a function without parameters right now, todo */
+	lval_del(a);
+
+	lenv_put(e, lval_sym("run_interpreter"), lval_num(0));
+
+	return lval_sexpr();
+}
+
 /* Evaluate S-Expression */
 lval* lval_eval_sexpr(lenv* e, lval* v) {
 	/* Evaluate all cells */
@@ -652,6 +663,7 @@ lval* lval_eval(lenv* e, lval* v) {
 void lenv_add_builtins(lenv* e) {
 	lenv_add_builtin(e, "def", builtin_def);
 	lenv_add_builtin(e, "dump", builtin_dump);
+	lenv_add_builtin(e, "exit", builtin_exit);
 
 	/* List functions */
 	lenv_add_builtin(e, "list", builtin_list);
@@ -695,11 +707,12 @@ int main(int argc, char** argv) {
 
 	lenv* e = lenv_new();
 	lenv_add_builtins(e);
+	lenv_put(e, lval_sym("run_interpreter"), lval_num(1));
 
 	puts("Krispy version 0.0.0.0.1");
 	puts("Press Ctrl+C to Exit\n");
 
-	while (1) {
+	while (lenv_get(e, lval_sym("run_interpreter"))->num) {
 		char* input = readline("krispy> ");
 		add_history(input);
 
@@ -722,5 +735,6 @@ int main(int argc, char** argv) {
 
 	mpc_cleanup(6, Number, Symbol, Sexpr, Qexpr, Expr, Lispy);
 
+	puts("Exiting");
 	return 0;
 }
