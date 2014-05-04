@@ -49,6 +49,14 @@ char* ltype_name(int t) {
 	}
 }
 
+/* Forward declarations */
+lenv* lenv_new(void);
+void lenv_del(lenv* e);
+void lenv_add_builtins(lenv* e);
+
+lval* lval_eval(lenv* e, lval* v);
+void lval_print(lval* v);
+
 /* Create number value */
 lval* lval_num(long x) {
 	lval* v = malloc(sizeof(lval));
@@ -176,8 +184,6 @@ lval* lval_read(mpc_ast_t* t) {
 	return x;
 }
 
-void lval_print(lval* v);
-
 /* Print S/Q-expression */
 void lval_expr_print(lval* v, char open, char close) {
 	putchar(open);
@@ -193,13 +199,26 @@ void lval_expr_print(lval* v, char open, char close) {
 
 /* Print a value */
 void lval_print(lval* v) {
+	lenv* e;
+
 	switch (v->type) {
 		case LVAL_NUM:
 			printf("%li", v->num);
 			break;
 
 		case LVAL_FUN:
-			printf("<function>");
+			/* Capture all builtin functions in an env and look up the name */
+			e = lenv_new();
+			lenv_add_builtins(e);
+			char* fn = NULL;
+			for (int i=0; i < e->count; i++) {
+				if (e->vals[i]->fun == v->fun) {
+					fn = e->syms[i];
+					break;
+				}
+			}
+			printf("<function %s>", fn);
+			lenv_del(e);
 			break;
 
 		case LVAL_ERR:
@@ -520,8 +539,6 @@ lval* builtin_join(lenv* e, lval* a) {
 	lval_del(a);
 	return x;
 }
-
-lval* lval_eval(lenv* e, lval* v);
 
 /* Evaluate the given Q-Expression as S-Expression */
 lval* builtin_eval(lenv* e, lval* a) {
