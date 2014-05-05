@@ -51,6 +51,7 @@ char* ltype_name(int t) {
 
 /* Forward declarations */
 lenv* lenv_new(void);
+lval* lenv_get(lenv* e, lval* k);
 void lenv_del(lenv* e);
 void lenv_add_builtins(lenv* e);
 
@@ -321,6 +322,51 @@ lval* lval_copy(lval* v) {
 	return x;
 }
 
+/* Evaluate S-Expression */
+lval* lval_eval_sexpr(lenv* e, lval* v) {
+	/* Evaluate all cells */
+	for (int i = 0; i < v->count; i++) {
+		v->cell[i] = lval_eval(e, v->cell[i]);
+	}
+
+	/* If any cell evaluated to an error, return the first one encountered */
+	for (int i = 0; i < v->count; i++) {
+		if (v->cell[i]->type == LVAL_ERR) { return lval_take(v, i); }
+	}
+
+	if (v->count == 0) { return v; }
+
+	if (v->count == 1) { return lval_take(v, 0); }
+
+	lval* f = lval_pop(v, 0);
+	if (f->type != LVAL_FUN) {
+		lval* err = lval_err("Expected first element to be a function, got %s", ltype_name(f->type));
+		lval_del(f);
+		lval_del(v);
+		return err;
+	}
+
+	lval* result = f->fun(e, v);
+	lval_del(f);
+
+	return result;
+}
+
+/* Evaluate value */
+lval* lval_eval(lenv* e, lval* v) {
+	if (v->type == LVAL_SYM) {
+		lval* x = lenv_get(e, v);
+		lval_del(v);
+		return x;
+	}
+
+	if (v->type == LVAL_SEXPR) {
+		return lval_eval_sexpr(e, v);
+	}
+
+	return v;
+}
+
 /* Create new environment */
 lenv* lenv_new(void) {
 	lenv* e = malloc(sizeof(lenv));
@@ -394,6 +440,17 @@ void lenv_add_builtin(lenv* e, char* name, lbuiltin func) {
 	lval_del(v);
 }
 
+#define LASSERT(args, cond, fmt, ...) \
+	if (!(cond)) { \
+		lval* err = lval_err(fmt, ##__VA_ARGS__); \
+		lval_del(args); \
+		return err; \
+	}
+#define LASSERT_NOT_EMPTY(args, err) if (args->cell[0]->count == 0) \
+	{ lval_del(args); return lval_err(err); }
+#define LASSERT_ONE_ARG(args, err) if (args->count > 1) \
+	{ lval_del(args); return lval_err(err); }
+
 /* Math operations */
 lval* builtin_op(lenv* e, lval* a, char* op) {
 	for (int i = 0; i < a->count; i++) {
@@ -455,17 +512,6 @@ lval* builtin_mul(lenv* e, lval* a) {
 lval* builtin_div(lenv* e, lval* a) {
 	return builtin_op(e, a, "/");
 }
-
-#define LASSERT(args, cond, fmt, ...) \
-	if (!(cond)) { \
-		lval* err = lval_err(fmt, ##__VA_ARGS__); \
-		lval_del(args); \
-		return err; \
-	}
-#define LASSERT_NOT_EMPTY(args, err) if (args->cell[0]->count == 0) \
-	{ lval_del(args); return lval_err(err); }
-#define LASSERT_ONE_ARG(args, err) if (args->count > 1) \
-	{ lval_del(args); return lval_err(err); }
 
 /* Define symbol(s) */
 lval* builtin_def(lenv* e, lval* a) {
@@ -612,51 +658,6 @@ lval* builtin_exit(lenv* e, lval* a) {
 	lenv_put(e, lval_sym("run_interpreter"), lval_num(0));
 
 	return lval_sexpr();
-}
-
-/* Evaluate S-Expression */
-lval* lval_eval_sexpr(lenv* e, lval* v) {
-	/* Evaluate all cells */
-	for (int i = 0; i < v->count; i++) {
-		v->cell[i] = lval_eval(e, v->cell[i]);
-	}
-
-	/* If any cell evaluated to an error, return the first one encountered */
-	for (int i = 0; i < v->count; i++) {
-		if (v->cell[i]->type == LVAL_ERR) { return lval_take(v, i); }
-	}
-
-	if (v->count == 0) { return v; }
-
-	if (v->count == 1) { return lval_take(v, 0); }
-
-	lval* f = lval_pop(v, 0);
-	if (f->type != LVAL_FUN) {
-		lval* err = lval_err("Expected first element to be a function, got %s", ltype_name(f->type));
-		lval_del(f);
-		lval_del(v);
-		return err;
-	}
-
-	lval* result = f->fun(e, v);
-	lval_del(f);
-
-	return result;
-}
-
-/* Evaluate value */
-lval* lval_eval(lenv* e, lval* v) {
-	if (v->type == LVAL_SYM) {
-		lval* x = lenv_get(e, v);
-		lval_del(v);
-		return x;
-	}
-
-	if (v->type == LVAL_SEXPR) {
-		return lval_eval_sexpr(e, v);
-	}
-
-	return v;
 }
 
 /* Add builtin functions to an environment */
