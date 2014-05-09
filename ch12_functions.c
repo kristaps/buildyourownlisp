@@ -60,12 +60,16 @@ char* ltype_name(int t) {
 /* Forward declarations */
 lenv* lenv_new(void);
 lval* lenv_get(lenv* e, lval* k);
+void lenv_put(lenv* e, lval* k, lval* v);
 lenv* lenv_copy(lenv* e);
 void lenv_del(lenv* e);
 void lenv_add_builtins(lenv* e);
 
 lval* lval_eval(lenv* e, lval* v);
+lval* lval_call(lenv* e, lval* f, lval* a);
 void lval_print(lval* v);
+
+lval* builtin_eval(lenv* e, lval* a);
 
 /* Create number value */
 lval* lval_num(long x) {
@@ -173,7 +177,7 @@ void lval_del(lval* v) {
 	free(v);
 }
 
-/* Append value x to S/Q-Expression value a */
+/* Append value x to S/Q-Expression value v */
 lval* lval_add(lval* v, lval* x) {
 	v->count++;
 	v->cell = realloc(v->cell, sizeof(lval*) * v->count);
@@ -374,7 +378,7 @@ lval* lval_eval_sexpr(lenv* e, lval* v) {
 		return err;
 	}
 
-	lval* result = f->builtin(e, v);
+	lval* result = lval_call(e, f, v);
 	lval_del(f);
 
 	return result;
@@ -393,6 +397,50 @@ lval* lval_eval(lenv* e, lval* v) {
 	}
 
 	return v;
+}
+
+/* Call function or return a function with some parameters unbound, if there
+   are less arguments than formals */
+lval* lval_call(lenv* e, lval* f, lval* a) {
+	if (f->builtin) {
+		return f->builtin(e, a);
+	}
+
+	int given = a->count;
+	int total = f->formals->count;
+
+	while (a->count) {
+		if (f->formals->count == 0) {
+			lval_del(a);
+			return lval_err(
+				"Function passed too many arguments. Got %i, expected %i",
+				given,
+				total
+			);
+		}
+
+		/* Get next formal and value. Note to self: we can carelessly consume the
+		   function formals because we either defined it on the fly or we got a copy
+		   by accessing a function in the env via lenv_get. */
+		lval* sym = lval_pop(f->formals, 0);
+		lval* val = lval_pop(a, 0);
+
+		lenv_put(f->env, sym, val);
+
+		lval_del(sym);
+		lval_del(val);
+	}
+
+	lval_del(a);
+
+	if (f->formals->count == 0) {
+		/* All formals have been bound, evaluate */
+		f->env->par = e;
+		return builtin_eval(f->env, lval_add(lval_sexpr(), lval_copy(f->body)));
+	} else {
+		/* Some parameters remain unbound, return partially bound function */
+		return lval_copy(f);
+	}
 }
 
 /* Create new environment */
