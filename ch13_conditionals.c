@@ -895,9 +895,29 @@ lval* builtin_lambda(lenv* e, lval* a) {
 	return lval_lambda(formals, body);
 }
 
+/* Choose code to evaluate depending on a condition */
+lval* builtin_if(lenv* e, lval* a) {
+	/* Expecting 3 parameters: condition, true-code, false-code */
+	LASSERT_NUM("if", a, 3);
+	LASSERT_TYPE("if", a, 0, LVAL_NUM);
+	LASSERT_TYPE("if", a, 1, LVAL_QEXPR);
+	LASSERT_TYPE("if", a, 2, LVAL_QEXPR);
+
+	lval* x = NULL;
+	if (a->cell[0]-> num == 0) {
+		x = lval_take(a, 2);
+	} else {
+		x = lval_take(a, 1);
+	}
+
+	x->type = LVAL_SEXPR;
+	return lval_eval(e, x);
+}
+
 /* Add builtin functions to an environment */
 void lenv_add_builtins(lenv* e) {
 	lenv_add_builtin(e, "\\", builtin_lambda);
+	lenv_add_builtin(e, "if", builtin_if);
 	lenv_add_builtin(e, "def", builtin_def);
 	lenv_add_builtin(e, "=", builtin_put);
 	lenv_add_builtin(e, "dump", builtin_dump);
