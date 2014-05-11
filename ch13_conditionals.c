@@ -400,6 +400,44 @@ lval* lval_eval(lenv* e, lval* v) {
 	return v;
 }
 
+int lval_eq(lval* x, lval* y) {
+	if (x->type != x->type) { return 0; }
+
+	switch (x->type) {
+		case LVAL_NUM:
+			return (x->num == y->num);
+		break;
+
+		case LVAL_ERR:
+			return (strcmp(x->err, y->err) == 0);
+		break;
+
+		case LVAL_SYM:
+			return (strcmp(x->sym, y->sym) == 0);
+		break;
+
+		case LVAL_FUN:
+			if (x->builtin || y->builtin) {
+				return x->builtin == y->builtin;
+			} else {
+				return lval_eq(x->formals, y->formals) && lval_eq(x->body, y->body);
+			}
+		break;
+
+		case LVAL_QEXPR:
+		case LVAL_SEXPR:
+			if (x->count != y->count) { return 0; }
+
+			for (int i = 0; i < x->count; i++) {
+				if (!lval_eq(x->cell[i], y->cell[i])) { return 0; }
+			}
+
+			return 1;
+		break;
+	}
+	return 0;
+}
+
 /* Call function or return a function with some parameters unbound, if there
    are less arguments than formals */
 lval* lval_call(lenv* e, lval* f, lval* a) {
@@ -659,7 +697,7 @@ lval* builtin_div(lenv* e, lval* a) {
 }
 
 /* Compares two number values, returns 0 for false and 1 for true */
-lval* builtin_compare(lenv* e, lval* a, char* op) {
+lval* builtin_ord(lenv* e, lval* a, char* op) {
 	LASSERT_NUM(op, a, 2);
 	LASSERT_TYPE(op, a, 0, LVAL_NUM);
 	LASSERT_TYPE(op, a, 1, LVAL_NUM);
@@ -669,8 +707,6 @@ lval* builtin_compare(lenv* e, lval* a, char* op) {
 	long left = a->cell[0]->num;
 	long right = a->cell[1]->num;
 
-	if (strcmp(op, "==") == 0) { r->num = left == right; }
-	if (strcmp(op, "!=") == 0) { r->num = left != right; }
 	if (strcmp(op, ">") == 0) { r->num = left > right; }
 	if (strcmp(op, "<") == 0) { r->num = left < right; }
 	if (strcmp(op, ">=") == 0) { r->num = left >= right; }
@@ -680,34 +716,46 @@ lval* builtin_compare(lenv* e, lval* a, char* op) {
 	return r;
 }
 
-/* builtin_compare wrapper for "==" */
-lval* builtin_eq(lenv* e, lval* a) {
-	return builtin_compare(e, a, "==");
-}
-
-/* builtin_compare wrapper for "!=" */
-lval* builtin_neq(lenv* e, lval* a) {
-	return builtin_compare(e, a, "!=");
-}
-
-/* builtin_compare wrapper for ">" */
+/* builtin_ord wrapper for ">" */
 lval* builtin_gt(lenv* e, lval* a) {
-	return builtin_compare(e, a, ">");
+	return builtin_ord(e, a, ">");
 }
 
-/* builtin_compare wrapper for "<" */
+/* builtin_ord wrapper for "<" */
 lval* builtin_lt(lenv* e, lval* a) {
-	return builtin_compare(e, a, "<");
+	return builtin_ord(e, a, "<");
 }
 
-/* builtin_compare wrapper for ">=" */
+/* builtin_ord wrapper for ">=" */
 lval* builtin_gte(lenv* e, lval* a) {
-	return builtin_compare(e, a, ">=");
+	return builtin_ord(e, a, ">=");
 }
 
-/* builtin_compare wrapper for "<=" */
+/* builtin_ord wrapper for "<=" */
 lval* builtin_lte(lenv* e, lval* a) {
-	return builtin_compare(e, a, "<=");
+	return builtin_ord(e, a, "<=");
+}
+
+/* Compares any two values for equality/non-equality */
+lval* builtin_cmp(lenv* e, lval* a, char* op) {
+	LASSERT_NUM(op, a, 2);
+
+	lval* r = lval_num(0);
+	if (strcmp(op, "==") == 0) { r->num = lval_eq(a->cell[0], a->cell[1]); }
+	if (strcmp(op, "!=") == 0) { r->num = !lval_eq(a->cell[1], a->cell[1]); }
+
+	lval_del(a);
+	return r;
+}
+
+/* builtin_cmp wrapper for "==" */
+lval* builtin_eq(lenv* e, lval* a) {
+	return builtin_cmp(e, a, "==");
+}
+
+/* builtin_cmp wrapper for "!=" */
+lval* builtin_ne(lenv* e, lval* a) {
+	return builtin_cmp(e, a, "!=");
 }
 
 /* Define symbol(s) */
@@ -939,13 +987,15 @@ void lenv_add_builtins(lenv* e) {
 	lenv_add_builtin(e, "*", builtin_mul);
 	lenv_add_builtin(e, "/", builtin_div);
 
-	/* Comparison functions */
-	lenv_add_builtin(e, "==", builtin_eq);
-	lenv_add_builtin(e, "!=", builtin_neq);
+	/* Number comparison functions */
 	lenv_add_builtin(e, ">", builtin_gt);
 	lenv_add_builtin(e, "<", builtin_lt);
 	lenv_add_builtin(e, ">=", builtin_gte);
 	lenv_add_builtin(e, "<=", builtin_lte);
+
+	/* Equality test functions */
+	lenv_add_builtin(e, "==", builtin_eq);
+	lenv_add_builtin(e, "!=", builtin_ne);
 }
 
 int main(int argc, char** argv) {
