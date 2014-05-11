@@ -703,12 +703,7 @@ lval* builtin_put(lenv* e, lval* a) {
 
 /* Return first element of the given Q-Expression */
 lval* builtin_head(lenv* e, lval* a) {
-	LASSERT_NOT_EMPTY(a, "Function 'head' passed {}!");
-	LASSERT(
-		a,
-		(a->count == 1),
-		"Function 'head' passed too many arguments. Got %i, expected %i", a->count, 1
-	);
+	LASSERT_NUM("head", a, 1)
 	LASSERT(
 		a,
 		(a->cell[0]->type == LVAL_QEXPR),
