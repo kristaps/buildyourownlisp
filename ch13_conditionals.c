@@ -658,6 +658,58 @@ lval* builtin_div(lenv* e, lval* a) {
 	return builtin_op(e, a, "/");
 }
 
+/* Compares two number values, returns 0 for false and 1 for true */
+lval* builtin_compare(lenv* e, lval* a, char* op) {
+	LASSERT_NUM(op, a, 2);
+	LASSERT_TYPE(op, a, 0, LVAL_NUM);
+	LASSERT_TYPE(op, a, 1, LVAL_NUM);
+
+	lval* r = lval_num(0);
+
+	long left = a->cell[0]->num;
+	long right = a->cell[1]->num;
+
+	if (strcmp(op, "==") == 0) { r->num = left == right; }
+	if (strcmp(op, "!=") == 0) { r->num = left != right; }
+	if (strcmp(op, ">") == 0) { r->num = left > right; }
+	if (strcmp(op, "<") == 0) { r->num = left < right; }
+	if (strcmp(op, ">=") == 0) { r->num = left >= right; }
+	if (strcmp(op, "<=") == 0) { r->num = left <= right; }
+
+	lval_del(a);
+	return r;
+}
+
+/* builtin_compare wrapper for "==" */
+lval* builtin_eq(lenv* e, lval* a) {
+	return builtin_compare(e, a, "==");
+}
+
+/* builtin_compare wrapper for "!=" */
+lval* builtin_neq(lenv* e, lval* a) {
+	return builtin_compare(e, a, "!=");
+}
+
+/* builtin_compare wrapper for ">" */
+lval* builtin_gt(lenv* e, lval* a) {
+	return builtin_compare(e, a, ">");
+}
+
+/* builtin_compare wrapper for "<" */
+lval* builtin_lt(lenv* e, lval* a) {
+	return builtin_compare(e, a, "<");
+}
+
+/* builtin_compare wrapper for ">=" */
+lval* builtin_gte(lenv* e, lval* a) {
+	return builtin_compare(e, a, ">=");
+}
+
+/* builtin_compare wrapper for "<=" */
+lval* builtin_lte(lenv* e, lval* a) {
+	return builtin_compare(e, a, "<=");
+}
+
 /* Define symbol(s) */
 lval* builtin_var(lenv* e, lval* a, char* func) {
 	LASSERT_TYPE(func, a, 0, LVAL_QEXPR);
@@ -866,6 +918,14 @@ void lenv_add_builtins(lenv* e) {
 	lenv_add_builtin(e, "-", builtin_sub);
 	lenv_add_builtin(e, "*", builtin_mul);
 	lenv_add_builtin(e, "/", builtin_div);
+
+	/* Comparison functions */
+	lenv_add_builtin(e, "==", builtin_eq);
+	lenv_add_builtin(e, "!=", builtin_neq);
+	lenv_add_builtin(e, ">", builtin_gt);
+	lenv_add_builtin(e, "<", builtin_lt);
+	lenv_add_builtin(e, ">=", builtin_gte);
+	lenv_add_builtin(e, "<=", builtin_lte);
 }
 
 int main(int argc, char** argv) {
