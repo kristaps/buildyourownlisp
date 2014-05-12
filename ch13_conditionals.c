@@ -758,6 +758,7 @@ lval* builtin_ne(lenv* e, lval* a) {
 	return builtin_cmp(e, a, "!=");
 }
 
+/* Logical NOT */
 lval* builtin_not(lenv* e, lval* a) {
 	LASSERT_NUM('!', a, 1);
 	LASSERT_TYPE('!', a, 0, LVAL_NUM);
@@ -766,6 +767,43 @@ lval* builtin_not(lenv* e, lval* a) {
 	lval_del(a);
 
 	return r;
+}
+
+/* Boolean operations */
+lval* builtin_bool(lenv* e, lval* a, char* op) {
+	LASSERT(a, (a->count > 1), "Need at least 2 arguments for function %s, got %i", op, a->count);
+	for (int i = 0; i < a->count; i++) {
+		LASSERT_TYPE(op, a, i, LVAL_NUM);
+	}
+
+	lval* x = lval_pop(a, 0);
+
+	while (a->count) {
+		/* Short circuit checks */
+		if (strcmp(op, "&&") == 0 && !x->num) { break; }
+		if (strcmp(op, "||") == 0 && x->num) { break; }
+
+		/* Process next operand */
+		lval* y = lval_pop(a, 0);
+
+		if (strcmp(op, "&&") == 0) { x->num = x->num && y->num; }
+		if (strcmp(op, "&&") == 0) { x->num = x->num || y->num; }
+
+		lval_del(y);
+	}
+
+	lval_del(a);
+	return x;
+}
+
+/* Boolean AND */
+lval* builtin_and(lenv* e, lval* a) {
+	return builtin_bool(e, a, "&&");
+}
+
+/* Boolean OR */
+lval* builtin_or(lenv* e, lval* a) {
+	return builtin_bool(e, a, "||");
 }
 
 /* Define symbol(s) */
@@ -1009,6 +1047,8 @@ void lenv_add_builtins(lenv* e) {
 
 	/* Boolean functions */
 	lenv_add_builtin(e, "!", builtin_not);
+	lenv_add_builtin(e, "||", builtin_or);
+	lenv_add_builtin(e, "&&", builtin_and);
 }
 
 int main(int argc, char** argv) {
@@ -1022,13 +1062,13 @@ int main(int argc, char** argv) {
 	puts("Declared parsers");
 
 	mpca_lang(MPC_LANG_DEFAULT,
-		"                                                      \
-			number : /-?[0-9]+/ ;                              \
-			symbol : /[a-zA-Z0-9_+\\-*\\/\\\\=<>!&]+/ ;        \
-			sexpr  : '(' <expr>* ')' ;                         \
-			qexpr  : '{' <expr>* '}' ;                         \
-			expr   : <number> | <symbol> | <sexpr> | <qexpr> ; \
-			lispy  : /^/ <expr>* /$/ ;                         \
+		"                                                       \
+			number : /-?[0-9]+/ ;                               \
+			symbol : /[a-zA-Z0-9_+\\-*\\/\\\\=<>!&|]+/ ;        \
+			sexpr  : '(' <expr>* ')' ;                          \
+			qexpr  : '{' <expr>* '}' ;                          \
+			expr   : <number> | <symbol> | <sexpr> | <qexpr> ;  \
+			lispy  : /^/ <expr>* /$/ ;                          \
 		",
 		Number, Symbol, Sexpr, Qexpr, Expr, Lispy);
 
