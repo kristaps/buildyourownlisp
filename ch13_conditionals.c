@@ -852,6 +852,7 @@ lval* builtin_put(lenv* e, lval* a) {
 /* Return first element of the given Q-Expression */
 lval* builtin_head(lenv* e, lval* a) {
 	LASSERT_NUM("head", a, 1)
+	LASSERT_NOT_EMPTY(a, "Function 'head' got passed {}")
 	LASSERT(
 		a,
 		(a->cell[0]->type == LVAL_QEXPR),
