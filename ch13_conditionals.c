@@ -742,7 +742,7 @@ lval* builtin_cmp(lenv* e, lval* a, char* op) {
 
 	lval* r = lval_num(0);
 	if (strcmp(op, "==") == 0) { r->num = lval_eq(a->cell[0], a->cell[1]); }
-	if (strcmp(op, "!=") == 0) { r->num = !lval_eq(a->cell[1], a->cell[1]); }
+	if (strcmp(op, "!=") == 0) { r->num = !lval_eq(a->cell[0], a->cell[1]); }
 
 	lval_del(a);
 	return r;
