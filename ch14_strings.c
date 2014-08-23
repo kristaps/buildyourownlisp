@@ -6,6 +6,15 @@
 #include "mpc.h"
 
 
+mpc_parser_t* Number;
+mpc_parser_t* Symbol;
+mpc_parser_t* String;
+mpc_parser_t* Comment;
+mpc_parser_t* Sexpr;
+mpc_parser_t* Qexpr;
+mpc_parser_t* Expr;
+mpc_parser_t* Lispy;
+
 struct lval;
 struct lenv;
 typedef struct lval lval;
@@ -967,6 +976,41 @@ lval* builtin_eval(lenv* e, lval* a) {
 	return lval_eval(e, x);
 }
 
+lval* builtin_load(lenv* e, lval* a) {
+	LASSERT_NUM("load", a, 1);
+	LASSERT_TYPE("load", a, 0, LVAL_STR);
+
+	mpc_result_t r;
+	if (mpc_parse_contents(a->cell[0]->str, Lispy, &r)) {
+		lval* expr = lval_read(r.output);
+		mpc_ast_delete(r.output);
+
+		/* Evaluate each expression */
+		while (expr->count) {
+			lval* x = lval_eval(e, lval_pop(expr, 0));
+			/* Print any errors, but continue evaluating */
+			if (x->type == LVAL_ERR) { lval_println(x); }
+			lval_del(x);
+		}
+
+		lval_del(expr);
+		lval_del(a);
+
+		/* Return () */
+		return lval_sexpr();
+
+	} else {
+		char* err_msg = mpc_err_string(r.error);
+		mpc_err_delete(r.error);
+
+		lval* err = lval_err("Could not load library %s", err_msg);
+		free(err_msg);
+		lval_del(a);
+
+		return err;
+	}
+}
+
 /* Return the given Q-Expression with the given value inserted at its beginning */
 lval* builtin_cons(lenv* e, lval* a) {
 	LASSERT(a, (a->count <= 2), "Function 'cons' passed too many arguments!");
@@ -1066,6 +1110,21 @@ lval* builtin_if(lenv* e, lval* a) {
 	return lval_eval(e, x);
 }
 
+/* Print arguments */
+lval* builtin_print(lenv* e, lval* a) {
+	for (int i=0; i < a->count; i++) {
+		lval_print(a->cell[i]);
+		if (i < (a->count - 1)) {
+			putchar(' ');
+		}
+	}
+
+	putchar('\n');
+	lval_del(a);
+
+	return lval_sexpr();
+}
+
 /* Add builtin functions to an environment */
 void lenv_add_builtins(lenv* e) {
 	lenv_add_builtin(e, "\\", builtin_lambda);
@@ -1074,6 +1133,8 @@ void lenv_add_builtins(lenv* e) {
 	lenv_add_builtin(e, "=", builtin_put);
 	lenv_add_builtin(e, "dump", builtin_dump);
 	lenv_add_builtin(e, "exit", builtin_exit);
+	lenv_add_builtin(e, "load", builtin_load);
+	lenv_add_builtin(e, "print", builtin_print);
 
 	/* List functions */
 	lenv_add_builtin(e, "list", builtin_list);
@@ -1108,16 +1169,14 @@ void lenv_add_builtins(lenv* e) {
 }
 
 int main(int argc, char** argv) {
-	mpc_parser_t* Number = mpc_new("number");
-	mpc_parser_t* Symbol = mpc_new("symbol");
-	mpc_parser_t* String = mpc_new("string");
-	mpc_parser_t* Comment = mpc_new("comment");
-	mpc_parser_t* Sexpr = mpc_new("sexpr");
-	mpc_parser_t* Qexpr = mpc_new("qexpr");
-	mpc_parser_t* Expr = mpc_new("expr");
-	mpc_parser_t* Lispy = mpc_new("lispy");
-
-	puts("Declared parsers");
+	Number = mpc_new("number");
+	Symbol = mpc_new("symbol");
+	String = mpc_new("string");
+	Comment = mpc_new("comment");
+	Sexpr = mpc_new("sexpr");
+	Qexpr = mpc_new("qexpr");
+	Expr = mpc_new("expr");
+	Lispy = mpc_new("lispy");
 
 	mpca_lang(MPC_LANG_DEFAULT,
 		"                                                        \
@@ -1133,38 +1192,50 @@ int main(int argc, char** argv) {
 		",
 		Number, Symbol, String, Comment, Sexpr, Qexpr, Expr, Lispy);
 
-	puts("Parsed parsers");
-
 	lenv* e = lenv_new();
 	lenv_add_builtins(e);
-	lenv_put(e, lval_sym("run_interpreter"), lval_num(1));
 
-	puts("Krispy version 0.0.0.0.1");
-	puts("Press Ctrl+C to Exit\n");
-
-	while (lenv_get(e, lval_sym("run_interpreter"))->num) {
-		char* input = readline("krispy> ");
-		add_history(input);
-
-		mpc_result_t r;
-		if (mpc_parse("<stdin>", input, Lispy, &r)) {
-			lval* x = lval_eval(e, lval_read(r.output));
-			lval_println(x);
+	if (argc >= 2) {
+		/* Treat arguments as filenames, load and evaluate each */
+		for (int i = 1; i < argc; i++) {
+			lval* args = lval_add(lval_sexpr(), lval_str(argv[i]));
+			lval* x = builtin_load(e, args);
+			if (x->type == LVAL_ERR) {
+				lval_println(x);
+			}
 			lval_del(x);
-
-			mpc_ast_delete(r.output);
-		} else {
-			mpc_err_print(r.error);
-			mpc_err_delete(r.error);
 		}
+	} else {
+		/* Start REPL */
+		lenv_put(e, lval_sym("run_interpreter"), lval_num(1));
 
-		free(input);
+		puts("Krispy version 0.0.0.0.1");
+		puts("Press Ctrl+C to Exit\n");
+
+		while (lenv_get(e, lval_sym("run_interpreter"))->num) {
+			char* input = readline("krispy> ");
+			add_history(input);
+
+			mpc_result_t r;
+			if (mpc_parse("<stdin>", input, Lispy, &r)) {
+				lval* x = lval_eval(e, lval_read(r.output));
+				lval_println(x);
+				lval_del(x);
+
+				mpc_ast_delete(r.output);
+			} else {
+				mpc_err_print(r.error);
+				mpc_err_delete(r.error);
+			}
+
+			free(input);
+		}
+		puts("Exiting");
 	}
 
 	lenv_del(e);
 
 	mpc_cleanup(8, Number, Symbol, String, Comment, Sexpr, Qexpr, Expr, Lispy);
 
-	puts("Exiting");
 	return 0;
 }
