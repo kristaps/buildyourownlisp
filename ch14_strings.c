@@ -955,28 +955,29 @@ lval* builtin_join(lenv* e, lval* a) {
 	int arg_type = a->cell[0]->type;
 	lval* x;
 
-	if (arg_type == LVAL_QEXPR) {
-		for (int i = 0; i < a->count; i++) {
-			LASSERT(
-				a,
-				(a->cell[i]->type == LVAL_QEXPR),
-				"Function 'join' parameters must be of the same type."
-			);
-		}
+	LASSERT(
+		a,
+		(arg_type == LVAL_QEXPR || arg_type == LVAL_STR),
+		"Function 'join' passed incorrect type, supported types ar Q-Expr and string"
+	);
 
+	for (int i = 0; i < a->count; i++) {
+		LASSERT(
+			a,
+			(a->cell[i]->type == arg_type),
+			"Function 'join' parameters must be of the same type."
+		);
+	}
+
+	if (arg_type == LVAL_QEXPR) {
 		x = lval_pop(a, 0);
 		while (a->count) {
 			x = lval_join(x, lval_pop(a, 0));
 		}
 
-	} else if (arg_type == LVAL_STR) {
+	} else {
 		int len = 1; /* one byte for the terminator */
 		for (int i = 0; i < a->count; i++) {
-			LASSERT(
-				a,
-				(a->cell[i]->type == LVAL_STR),
-				"Function 'join' passed incorrect type."
-			);
 			len += strlen(a->cell[i]->str);
 		}
 
@@ -991,12 +992,6 @@ lval* builtin_join(lenv* e, lval* a) {
 		x = lval_str(s);
 		free(s);
 
-	} else {
-		LASSERT(
-			a,
-			0,
-			"Function 'join' passed incorrect type, supported types ar Q-Expr and string"
-		);
 	}
 
 	lval_del(a);
