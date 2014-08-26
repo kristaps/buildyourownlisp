@@ -1125,6 +1125,17 @@ lval* builtin_print(lenv* e, lval* a) {
 	return lval_sexpr();
 }
 
+/* Create error lval */
+lval* builtin_error(lenv* e, lval* a) {
+	LASSERT_NUM("error", a, 1);
+	LASSERT_TYPE("error", a, 0, LVAL_STR);
+
+	lval* err = lval_err(a->cell[0]->str);
+
+	lval_del(a);
+	return err;
+}
+
 /* Add builtin functions to an environment */
 void lenv_add_builtins(lenv* e) {
 	lenv_add_builtin(e, "\\", builtin_lambda);
@@ -1135,6 +1146,7 @@ void lenv_add_builtins(lenv* e) {
 	lenv_add_builtin(e, "exit", builtin_exit);
 	lenv_add_builtin(e, "load", builtin_load);
 	lenv_add_builtin(e, "print", builtin_print);
+	lenv_add_builtin(e, "error", builtin_error);
 
 	/* List functions */
 	lenv_add_builtin(e, "list", builtin_list);
