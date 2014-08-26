@@ -952,14 +952,51 @@ lval* builtin_list(lenv* e, lval* a) {
 
 /* Join contents of argument Q-Expressions into single Q-Expression */
 lval* builtin_join(lenv* e, lval* a) {
-	for (int i = 0; i < a->count; i++) {
-		LASSERT(a, (a->cell[i]->type == LVAL_QEXPR), "Function 'join' passed incorrect type.");
-	}
+	int arg_type = a->cell[0]->type;
+	lval* x;
 
-	lval* x = lval_pop(a, 0);
+	if (arg_type == LVAL_QEXPR) {
+		for (int i = 0; i < a->count; i++) {
+			LASSERT(
+				a,
+				(a->cell[i]->type == LVAL_QEXPR),
+				"Function 'join' parameters must be of the same type."
+			);
+		}
 
-	while (a->count) {
-		x = lval_join(x, lval_pop(a, 0));
+		x = lval_pop(a, 0);
+		while (a->count) {
+			x = lval_join(x, lval_pop(a, 0));
+		}
+
+	} else if (arg_type == LVAL_STR) {
+		int len = 1; /* one byte for the terminator */
+		for (int i = 0; i < a->count; i++) {
+			LASSERT(
+				a,
+				(a->cell[i]->type == LVAL_STR),
+				"Function 'join' passed incorrect type."
+			);
+			len += strlen(a->cell[i]->str);
+		}
+
+		char* s = malloc(len);
+		s[len-1] = 0;
+		int start = 0;
+		for (int i = 0; i < a->count; i++) {
+			strncpy(s+start, a->cell[i]->str, strlen(a->cell[i]->str));
+			start += strlen(a->cell[i]->str);
+		}
+
+		x = lval_str(s);
+		free(s);
+
+	} else {
+		LASSERT(
+			a,
+			0,
+			"Function 'join' passed incorrect type, supported types ar Q-Expr and string"
+		);
 	}
 
 	lval_del(a);
