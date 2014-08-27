@@ -1,0 +1,49 @@
+; Atoms
+(def {nil} {})
+(def {true} 1)
+(def {false} 0)
+
+; Function definition
+(def {fun} (\ {f b} {def (head f) (\ (tail f) b)}))
+
+; Unpack list for function
+(fun {unpack f l} {
+	eval (join (list f) l)
+})
+
+(def {curry} unpack)
+
+; Pack list for function
+(fun {pack f & xs} {f xs})
+
+(def {uncurry} pack)
+
+; Perform several things in order
+(fun {do & l} {
+	if (== l nil)
+		{nil}
+		{last l}
+})
+
+; Open new scope
+(fun {let b} {
+	((\ {_} b) ())
+})
+
+; Logical functions
+(fun {not x} {- 1 x})
+(fun {or x y} {+ x y})
+(fun {and x y} {* x y})
+
+; Call 2 arg function with args reversed
+(fun {flip f a b} {f b a})
+; Compose two functions
+(fun {comp f g x} {f (g x)})
+
+; First, second or third item in a list
+(fun {fst l} {eval (head l)})
+(fun {snd l} {eval (head (tail l))})
+(fun {trd l} {eval (head (tail (tail l)))})
+
+
+(print "end of stdlib")
