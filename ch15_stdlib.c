@@ -1212,6 +1212,15 @@ void lenv_add_builtins(lenv* e) {
 	lenv_add_builtin(e, "&&", builtin_and);
 }
 
+void lenv_load_file(lenv* e, char* filename) {
+	lval* args = lval_add(lval_sexpr(), lval_str(filename));
+	lval* x = builtin_load(e, args);
+	if (x->type == LVAL_ERR) {
+		lval_println(x);
+	}
+	lval_del(x);
+}
+
 int main(int argc, char** argv) {
 	Number = mpc_new("number");
 	Symbol = mpc_new("symbol");
@@ -1238,16 +1247,12 @@ int main(int argc, char** argv) {
 
 	lenv* e = lenv_new();
 	lenv_add_builtins(e);
+	lenv_load_file(e, "ch15_stdlib.lspy");
 
 	if (argc >= 2) {
 		/* Treat arguments as filenames, load and evaluate each */
 		for (int i = 1; i < argc; i++) {
-			lval* args = lval_add(lval_sexpr(), lval_str(argv[i]));
-			lval* x = builtin_load(e, args);
-			if (x->type == LVAL_ERR) {
-				lval_println(x);
-			}
-			lval_del(x);
+			lenv_load_file(e, argv[i]);
 		}
 	} else {
 		/* Start REPL */
