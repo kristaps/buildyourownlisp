@@ -6,6 +6,13 @@
 ; Function definition
 (def {fun} (\ {f b} {def (head f) (\ (tail f) b)}))
 
+; Square a number
+(fun {sqr x} {* x x})
+
+; Test if number is odd/even
+(fun {odd x} {- x (* (/ x 2) 2)})
+(fun {even x} {not (odd x)})
+
 ; Unpack list for function
 (fun {unpack f l} {
 	eval (join (list f) l)
@@ -45,5 +52,71 @@
 (fun {snd l} {eval (head (tail l))})
 (fun {trd l} {eval (head (tail (tail l)))})
 
+; List length (shadows the builtin version)
+(fun {len l} {
+	if (== l nil)
+		{0}
+		{+ 1 (len (tail l))}
+})
+
+; Nth item in the list
+(fun {nth n l} {
+	if (== n 0)
+		{fst l}
+		{nth (- n 1) (tail l)}
+})
+
+; Last item in the list
+(fun {last l} {nth (- (len l) 1) l})
+
+; Take n items
+(fun {take n l} {
+	if (== n 0)
+		{nil}
+		{join (head l) (take (- n 1) (tail l))}
+})
+
+; Drop n items
+(fun {drop n l} {
+	if (== n 0)
+		{l}
+		{drop (- n 1) (tail l)}
+})
+
+; Split at n
+(fun {split n l} {list (take n l) (drop n l)})
+
+; Check if item is in list
+(fun {elem x l} {
+	if (== l nil)
+		{false}
+		{if (== x (fst l)) {true} {elem x (tail l)}}
+})
+
+; Apply function to list
+(fun {map f l} {
+	if (== l nil)
+		{nil}
+		{join (list (f (fst l))) (map f (tail l))}
+})
+
+; Apply filter to list
+(fun {filter f l} {
+	if (== l nil)
+		{nil}
+		{join (if (f (fst l)) {head l} {nil} ) (filter f (tail l))}
+})
+
+; Fold left
+(fun {foldl f z l} {
+	if (== l nil)
+		{z}
+		{foldl f (f z (fst l)) (tail l)}
+})
+
+; Sum
+(fun {sum l} {foldl + 0 l})
+; Product
+(fun {product l} {foldl * 1 l})
 
 (print "end of stdlib")
