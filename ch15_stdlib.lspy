@@ -53,11 +53,7 @@
 (fun {trd l} {eval (head (tail (tail l)))})
 
 ; List length (shadows the builtin version)
-(fun {len l} {
-	if (== l nil)
-		{0}
-		{+ 1 (len (tail l))}
-})
+(fun {len l} {foldl (\ {z i} {+ z 1}) 0 l})
 
 ; Nth item in the list
 (fun {nth n l} {
@@ -87,11 +83,7 @@
 (fun {split n l} {list (take n l) (drop n l)})
 
 ; Check if item is in list
-(fun {elem x l} {
-	if (== l nil)
-		{false}
-		{if (== x (fst l)) {true} {elem x (tail l)}}
-})
+(fun {elem x l} {foldl (\ {z i} {or z (== i x)}) false l})
 
 ; Apply function to list
 (fun {map f l} {
