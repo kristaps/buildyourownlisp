@@ -1,0 +1,10 @@
+; http://en.wikipedia.org/wiki/Fizz_buzz#Other_uses
+(map
+	(\ {n} {
+		select
+			{(and (== (mod n 3) 0) (== (mod n 5) 0)) (print "fizzbuzz")}
+			{(== (mod n 3) 0) (print "fizz")}
+			{(== (mod n 5) 0) (print "buzz")}
+			{otherwise (print n)}
+	})
+	(range 1 100))
