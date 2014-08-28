@@ -9,9 +9,19 @@
 ; Square a number
 (fun {sqr x} {* x x})
 
+; Modulo operation
+(fun {mod x y} {- x (* (/ x y) y)})
+
 ; Test if number is odd/even
-(fun {odd x} {- x (* (/ x 2) 2)})
+(fun {odd x} {mod x 2})
 (fun {even x} {not (odd x)})
+
+; Generate number range
+(fun {range first last} {
+	if (== first last)
+		{(list last)}
+		{join (list first) (range (+ first 1) last)}
+})
 
 ; Unpack list for function
 (fun {unpack f l} {
