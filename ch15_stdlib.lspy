@@ -119,4 +119,52 @@
 ; Product
 (fun {product l} {foldl * 1 l})
 
+; Conditionally evaluate one of several options
+(fun {select & cs} {
+	if (== cs nil)
+		{error "No selection found"}
+		{if (fst (fst cs)) {snd (fst cs)} {unpack select (tail cs)}}
+})
+(def {otherwise} true)
+
+; Function to test select
+(fun {month-day-suffix i} {
+	select
+		{(== i 1) "st"}
+		{(== i 2) "nd"}
+		{(== i 3) "rd"}
+		{otherwise "th"}
+})
+
+; Similar to select, but with simple comparison instead of eval of checks
+(fun {case x & cs} {
+	if (== cs nil)
+		{error "No case found"}
+		{
+			if (== x (fst (fst cs)))
+				{snd (fst cs)}
+				{unpack case (join (list x) (tail cs))}
+		}
+})
+
+; Function to test case
+(fun {day-name x} {
+	case x
+		{0 "Monday"}
+		{1 "Tuesday"}
+		{2 "Wednesday"}
+		{3 "Thursday"}
+		{4 "Friday"}
+		{5 "Saturday"}
+		{6 "Sunday"}
+})
+
+; Fibonacci
+(fun {fib n} {
+	select
+		{(== n 0) 0}
+		{(== n 1) 1}
+		{otherwise (+ (fib (- n 1)) (fib (- n 2)))}
+})
+
 (print "end of stdlib")
